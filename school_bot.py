@@ -5,8 +5,9 @@ from datetime import datetime
 import time
 from threading import Thread
 import schedule
-
-connection_obj = sqlite3.connect('test.db', check_same_thread=False)
+from PIL import Image, ImageDraw, ImageFont
+db = 'test_whynot.db'
+connection_obj = sqlite3.connect(db, check_same_thread=False)
 cursor_obj = connection_obj.cursor()
 
 markup = telebot.types.ReplyKeyboardMarkup(None, True)
@@ -38,7 +39,7 @@ current_time = now.strftime("%H:%M")
 def canteen_sending():  # Отправка в 11:00 (зав столовой)
     id = str()
     while True:
-        connection_obj = sqlite3.connect('test.db', check_same_thread=False)
+        connection_obj = sqlite3.connect(db, check_same_thread=False)
         cursor_obj = connection_obj.cursor()
         search_teacher = ''.join('\n'.join((' '.join(v) for v in cursor_obj.execute(
             "SELECT ID FROM TEST WHERE Who_teacher = 11").fetchall())))
@@ -46,13 +47,13 @@ def canteen_sending():  # Отправка в 11:00 (зав столовой)
         if bool(search_teacher):
             id = search_teacher
             break
-    connection_obj = sqlite3.connect('test.db', check_same_thread=False)
+    connection_obj = sqlite3.connect(db, check_same_thread=False)
     cursor_obj = connection_obj.cursor()
     children_lost = str('\n'.join(str(' '.join(v)) for v in cursor_obj.execute(
-        "SELECT First_Name, Last_Name, Patronymic, Class FROM TEST WHERE LOST = 'Потерял'").fetchall()))
+        "SELECT Last_Name ,First_Name, Patronymic, Class FROM TEST WHERE LOST = 'Потерял'").fetchall()))
     amount_children_lost = len(children_lost.split('\n'))
     children_forgot = str('\n'.join(str(' '.join(v)) for v in cursor_obj.execute(
-        "SELECT First_Name, Last_Name, Patronymic, Class FROM TEST WHERE LOST = 'Забыл'").fetchall()))
+        "SELECT Last_Name ,First_Name, Patronymic, Class FROM TEST WHERE LOST = 'Забыл'").fetchall()))
     amount_children_forgot = len(children_forgot.split('\n'))
     text = str()
     if len(children_lost) != 0:
@@ -69,7 +70,7 @@ def canteen_sending():  # Отправка в 11:00 (зав столовой)
 def teacher():  # Отправка в 11:00 (учитель)
     search_teacher1 = str()
     while True:
-        connection_obj = sqlite3.connect('test.db', check_same_thread=False)
+        connection_obj = sqlite3.connect(db, check_same_thread=False)
         cursor_obj = connection_obj.cursor()
         search_teacher = ''.join('\n'.join((' '.join(v) for v in cursor_obj.execute(
             "SELECT First_Name, Last_Name, Patronymic, Class, ID FROM TEST WHERE Who_teacher = 1").fetchall())))
@@ -83,9 +84,9 @@ def teacher():  # Отправка в 11:00 (учитель)
         text = str()
         for k in clas.split(','):
             children_forgot = '\n'.join(' '.join(v) for v in cursor_obj.execute(
-                f"SELECT First_Name, Last_Name, Patronymic FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{k}' AND Lost = 'Забыл'").fetchall())
+                f"SELECT Last_Name ,First_Name, Patronymic FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{k}' AND Lost = 'Забыл'").fetchall())
             children_lost = '\n'.join(' '.join(v) for v in cursor_obj.execute(
-                f"SELECT First_Name, Last_Name, Patronymic FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{k}' AND Lost = 'Потерял'").fetchall())
+                f"SELECT Last_Name ,First_Name, Patronymic FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{k}' AND Lost = 'Потерял'").fetchall())
             text = text + 'Забывшие карту:\n' + children_forgot + '\n\nПотерявшие карту:\n' + children_lost + '\n\n' + 'Опоздавшие на урок (в [  ] на какой урок):\n'
             for b in cursor_obj.execute(
                     f"SELECT First_Name, Last_Name, Patronymic, Time FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{k}'").fetchall():
@@ -153,7 +154,7 @@ def teacher():  # Отправка в 11:00 (учитель)
 
 
 def clear():
-    connection_obj = sqlite3.connect('test.db', check_same_thread=False)
+    connection_obj = sqlite3.connect(db, check_same_thread=False)
     cursor_obj = connection_obj.cursor()
     cursor_obj.execute('UPDATE TEST SET Time = null , Lost = null WHERE Who_teacher = 0')
     connection_obj.commit()
@@ -173,7 +174,7 @@ class Time(Thread):  # Новый поток для отправки учите�
 
 
 def db_table_val(id, name, surname, patronymic, clas, teacher, Who_teacher, Lost, Time):
-    connection_obj = sqlite3.connect('test.db', check_same_thread=False)
+    connection_obj = sqlite3.connect(db, check_same_thread=False)
     cursor_obj = connection_obj.cursor()
     cursor_obj.execute(
         'INSERT INTO TEST(ID, First_Name, Last_Name, Patronymic, Class, Teacher, Who_teacher, Lost, Time) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -329,25 +330,25 @@ def lost_and_forgot_teacher(message):
     clas = teacher.split()[3]
     name_teacher = ' '.join(teacher.split()[0:3])
     text = str()
-    for k in clas.split(','):
-        children_forgot = '\n'.join(' '.join(v) for v in cursor_obj.execute(
-            f"SELECT First_Name, Last_Name, Patronymic FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{k}' AND Lost = 'Забыл'").fetchall())
-        children_lost = '\n'.join(' '.join(v) for v in cursor_obj.execute(
-            f"SELECT First_Name, Last_Name, Patronymic FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{k}' AND Lost = 'Потерял'").fetchall())
-        text = text + 'Забывшие карту:\n' + children_forgot + '\n\nПотерявшие карту:\n' + children_lost + '\n\n'
+
+    children_forgot = '\n'.join(' '.join(v) for v in cursor_obj.execute(
+            f"SELECT Last_Name, First_Name, Patronymic FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{clas}' AND Lost = 'Забыл'").fetchall())
+    children_lost = '\n'.join(' '.join(v) for v in cursor_obj.execute(
+            f"SELECT Last_Name, First_Name, Patronymic FROM TEST WHERE Who_teacher = 0 AND Teacher = '{name_teacher}' AND Class = '{clas}' AND Lost = 'Потерял'").fetchall())
+    text = text + 'Забывшие карту:\n' + children_forgot + '\n\nПотерявшие карту:\n' + children_lost + '\n\n'
         # if datetime(1,1,1,v[3].split(',')[0],v[3].split(',')[1],1,1).strftime("%H:%M") < datetime(1,1,1,8,30,1,1).strftime("%H:%M"))
     bot.send_message(id, text)
 
 
 @bot.message_handler(commands=['lost'])  # для заведущей столовой
 def lost_admin(message):
-    connection_obj = sqlite3.connect('test.db', check_same_thread=False)
+    connection_obj = sqlite3.connect(db, check_same_thread=False)
     cursor_obj = connection_obj.cursor()
     children_lost = str('\n'.join(str(' '.join(v)) for v in cursor_obj.execute(
-        "SELECT First_Name, Last_Name, Patronymic, Class FROM TEST WHERE LOST = 'Потерял'").fetchall()))
+        "SELECT Last_Name, First_Name, Patronymic, Class FROM TEST WHERE LOST = 'Потерял'").fetchall()))
     amount_children_lost = len(children_lost.split('\n'))
     children_forgot = str('\n'.join(str(' '.join(v)) for v in cursor_obj.execute(
-        "SELECT First_Name, Last_Name, Patronymic, Class FROM TEST WHERE LOST = 'Забыл'").fetchall()))
+        "SELECT Last_Name, First_Name, Patronymic, Class FROM TEST WHERE LOST = 'Забыл'").fetchall()))
     amount_children_forgot = len(children_forgot.split('\n'))
     text = str()
     if len(children_lost) != 0:
@@ -369,18 +370,26 @@ def authorization(message):
 
 @bot.message_handler(content_types=["text"])
 def usually(message):
-    connection_obj = sqlite3.connect('test.db', check_same_thread=False)
+    connection_obj = sqlite3.connect(db, check_same_thread=False)
     cursor_obj = connection_obj.cursor()
 
     if message.text == 'Забыл карту':
-        bot.send_message(message.chat.id, tconv(message.date))
+        img = Image.new("RGB", (600, 600), (0, 0, 0))
+        d = ImageDraw.Draw(img)
+        myFont = ImageFont.truetype('d9464-arkhip_font.ttf', 200)
+        d.text((30, 200), tconv(message.date), fill=(255, 255, 255), font=myFont)
+        bot.send_photo(message.chat.id, img)
         cursor_obj.execute('UPDATE TEST SET LOST = ?, Time = ? WHERE Who_teacher = 0 AND ID = ?', (
             "Забыл", str(tconv(message.date)), int(message.chat.id)))  # str(datetime.now().strftime("%H:%M"))
         connection_obj.commit()
         connection_obj.close()
 
     elif message.text == 'Потерял карту':
-        bot.send_message(message.chat.id, tconv(message.date))
+        img = Image.new("RGB", (600, 600), (0, 0, 0))
+        d = ImageDraw.Draw(img)
+        myFont = ImageFont.truetype('d9464-arkhip_font.ttf', 200)
+        d.text((30, 200), tconv(message.date), fill=(255, 255, 255), font=myFont)
+        bot.send_photo(message.chat.id, img)
         cursor_obj.execute('UPDATE TEST SET LOST = ?, Time = ? WHERE Who_teacher = 0 AND ID = ?',
                            ("Потерял", str(tconv(message.date)), int(message.chat.id)))
         connection_obj.commit()
@@ -392,8 +401,8 @@ def usually(message):
 
 while True:
     try:
-        bot.polling(none_stop=True)
         Time().start()
+        bot.polling(none_stop=True)
     except:
         print('Error. Restarting...')
         time.sleep(1)
