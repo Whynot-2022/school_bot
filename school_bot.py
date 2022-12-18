@@ -321,6 +321,10 @@ def getRegData(user, name):
         'id': name
     })
 
+@bot.message_handler(commands=['start'])
+def authorization(message):
+    msg = bot.send_message(message.chat.id, 'Введите ключ')
+    bot.register_next_step_handler(msg, registration)
 
 @bot.message_handler(commands=['teacher'])  # для учителя. Можно смотреть
 def lost_and_forgot_teacher(message):
@@ -362,11 +366,6 @@ def lost_admin(message):
     bot.send_message(message.chat.id, text)
 
 
-@bot.message_handler(commands=['start'])
-def authorization(message):
-    msg = bot.send_message(message.chat.id, 'Введите ключ')
-    bot.register_next_step_handler(msg, registration)
-
 
 @bot.message_handler(content_types=["text"])
 def usually(message):
@@ -374,10 +373,12 @@ def usually(message):
     cursor_obj = connection_obj.cursor()
 
     if message.text == 'Забыл карту':
+        bot.send_message(message.chat.id,'Я надеюсь, больше ничего не забыл(а)?😅😅😅')
+        bot.send_message(message.chat.id,'Можешь проходить.\nТолько покажи карточку со временем входа охраннику 👇')
         img = Image.new("RGB", (600, 600), (0, 0, 0))
         d = ImageDraw.Draw(img)
-        myFont = ImageFont.truetype('d9464-arkhip_font.ttf', 200)
-        d.text((30, 200), tconv(message.date), fill=(255, 255, 255), font=myFont)
+        myFont = ImageFont.truetype('d9464-arkhip_font.ttf', 180)
+        d.text((10, 200), tconv(message.date), fill=(255, 255, 255), font=myFont)
         bot.send_photo(message.chat.id, img)
         cursor_obj.execute('UPDATE TEST SET LOST = ?, Time = ? WHERE Who_teacher = 0 AND ID = ?', (
             "Забыл", str(tconv(message.date)), int(message.chat.id)))  # str(datetime.now().strftime("%H:%M"))
@@ -385,19 +386,20 @@ def usually(message):
         connection_obj.close()
 
     elif message.text == 'Потерял карту':
+        bot.send_message(message.chat.id,'Как так???😳😳😳')
+        bot.send_message(message.chat.id,'Можешь проходить.\nТолько покажи карточку со временем входа охраннику 👇')
         img = Image.new("RGB", (600, 600), (0, 0, 0))
         d = ImageDraw.Draw(img)
-        myFont = ImageFont.truetype('d9464-arkhip_font.ttf', 200)
-        d.text((30, 200), tconv(message.date), fill=(255, 255, 255), font=myFont)
+        myFont = ImageFont.truetype('d9464-arkhip_font.ttf', 180)
+        d.text((10, 200), tconv(message.date), fill=(255, 255, 255), font=myFont)
         bot.send_photo(message.chat.id, img)
         cursor_obj.execute('UPDATE TEST SET LOST = ?, Time = ? WHERE Who_teacher = 0 AND ID = ?',
                            ("Потерял", str(tconv(message.date)), int(message.chat.id)))
         connection_obj.commit()
         connection_obj.close()
     else:
-        msg = bot.send_message(message.chat.id, 'Я вас не понял\nПожалуйста, выберите функцию', reply_markup=markup)
-        bot.register_next_step_handler(msg, usually)
-
+        bot.send_message(message.chat.id,'Вы ввели что-то другое')
+        authorization(message)
 
 while True:
     try:
@@ -405,4 +407,3 @@ while True:
         bot.polling(none_stop=True)
     except:
         print('Error. Restarting...')
-        time.sleep(1)
